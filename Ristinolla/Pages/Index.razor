@@ -18,6 +18,9 @@
         <div class="voittaja">
             <h2>Voittaja: @voittaja</h2>
         </div>
+        <div class="vuoro">
+            <button class="btn btn-primary" @onclick="() => AloitaPeli()">Pelaa uudestaan</button>
+        </div>
     }
 }
 
@@ -25,11 +28,18 @@
 
 @code{
     private List<Ruutu>? ruudut;
-    private string? pelaaja = "X";
+    private string? pelaaja;
     private string? voittaja;
 
     protected override void OnInitialized()
     {
+        AloitaPeli();
+    }
+
+    public void AloitaPeli()
+    {
+        pelaaja = "X";
+        voittaja = null;
         ruudut = new List<Ruutu>();
         for(int i = 0; i < 9; i++)
         {
