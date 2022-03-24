@@ -1,11 +1,14 @@
-﻿@using Ristinolla.Data
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@using Ristinolla.Data
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
 @page "/"
 
 <PageTitle>Ristinolla</PageTitle>
 @if(ruudut != null)
 {
             <div class="vuoro">
-            <h2>Vuoro: @pelaaja</h2>
+            <h2>Vuoro: @pelaaja.Nimi</h2>
         </div>
     <div id="peli">
     @foreach(var ruutu in ruudut)
@@ -16,54 +19,111 @@
     @if(voittaja != null)
     {
         <div class="voittaja">
-            <h2>Voittaja: @voittaja</h2>
+            <h2>Voittaja: @voittaja.Nimi</h2>
         </div>
         <div class="vuoro">
             <button class="btn btn-primary" @onclick="() => AloitaPeli()">Pelaa uudestaan</button>
         </div>
     }
+
+}
+else
+{
+    @if(pelaaja is null)
+    {
+        <input @bind="nickname" placeholder="Nimimerkkisi"/><br />
+        <button @onclick="() => AsetaNimimerkki()">Pelaa</button>
+    }
+        @if(pelaaja is not null)
+    {
+        <h4>Pelaajat</h4>
+<ul class="list-group">
+            @foreach(var player in pelaajat.Where(o => o.Pelaamassa == false && o.YhteysID == hubConnection.ConnectionId))
+            {
+                <li class="list-group-item" @onclick="() => Haasta(player)">@player.Nimi</li>
+            }
+        </ul>
+    }
+
 }
 
 
 
 @code{
+    private List<Pelaaja> pelaajat = new List<Pelaaja>();
     private List<Ruutu>? ruudut;
-    private string? pelaaja;
-    private string? voittaja;
+    private Pelaaja? pelaaja;
+    private Pelaaja? voittaja;
+    private HubConnection? hubConnection;
+    private string? nickname;
 
-    protected override void OnInitialized()
+    protected override async void OnInitialized()
     {
-        AloitaPeli();
+        hubConnection = new HubConnectionBuilder()
+        .WithUrl(NavigationManager.ToAbsoluteUri("/gamehub"))
+        .WithAutomaticReconnect()
+        .Build();
+
+        hubConnection.On<Pelaaja>("UusiPelaaja", (uus) =>
+        {
+            if(uus.YhteysID == hubConnection.ConnectionId)
+            {
+                pelaaja = uus;
+            }
+            else
+            {
+                pelaajat.Add(uus);
+            }
+        });
+
+        hubConnection.On<string>("OtaHaaste", (haastaja) =>
+        {
+            Console.WriteLine("Haaste pelaajalta " + haastaja);
+        });
+
+        await hubConnection.StartAsync();
     }
 
     public void AloitaPeli()
     {
-        pelaaja = "X";
-        voittaja = null;
-        ruudut = new List<Ruutu>();
-        for(int i = 0; i < 9; i++)
+        //ruudut = new List<Ruutu>();
+        //for(int i = 0; i < 9; i++)
+        //{
+        //    ruudut.Add(new Ruutu { Id = i, Pelaaja = null });
+        //}
+    }
+
+    public async Task Haasta(Pelaaja haastettava)
+    {
+        await hubConnection.SendAsync("Haaste", haastettava);
+    }
+
+    public async Task AsetaNimimerkki()
+    {
+        if(hubConnection is not null)
         {
-            ruudut.Add(new Ruutu { Id = i, Pelaaja = null });
+            await hubConnection.SendAsync("RekisteroiYhteys", nickname);
         }
     }
 
     public void ValitseRuutu(Ruutu valittu)
     {
-        if(valittu.Pelaaja == null && voittaja == null)
-        {
-            valittu.Pelaaja = pelaaja;
-            Voittiko();
-            if(pelaaja == "X")
-            {
-                pelaaja = "0";
-            }
-            else
-            {
-                pelaaja = "X";
-            }
-        }
+        //if(valittu.Pelaaja == null && voittaja == null)
+        //{
+        //    valittu.Pelaaja = pelaaja;
+        //    Voittiko();
+        //    if(pelaaja == "X")
+        //    {
+        //        pelaaja = "0";
+        //    }
+        //    else
+        //    {
+        //        pelaaja = "X";
+        //    }
+        //}
 
     }
+
 
     public bool Voittiko()
     {
@@ -84,13 +144,24 @@
             }
             if(ruudut.Where(o => o.Pelaaja != null).Count() == 9 && voittaja == null)
             {
-                voittaja = "Tasapeli";
+                voittaja = null;
             }
             return false;
         }
         else
         {
             return false;
+        }
+    }
+
+    public bool IsConnected =>
+        hubConnection?.State == HubConnectionState.Connected;
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
         }
     }
 
