@@ -6,18 +6,6 @@
 
 <PageTitle>Ristinolla</PageTitle>
 
-@if (ruudut != null && rekisteroity)
-{
-    <div class="vuoro">
-        <h2>Vuoro: @pelaaja.Nimi</h2>
-    </div>
-    <div id="peli">
-        @foreach (var ruutu in ruudut)
-        {
-            <div class="ruudukko" @key="ruutu.Id" @onclick="() => ValitseRuutu(ruutu)">@ruutu.Pelaaja</div>
-        }
-    </div>
-}
 @if(!rekisteroity)
 {
     <div class="vuoro">
@@ -28,34 +16,92 @@
 }
 else
 {
-        <div class="vuoro" style="max-width:600px; margin: 0 auto;">
-            <table class="table table-striped">
-            <thead class="table-dark text-white">
-                <tr>
-                    <th>Pelaaja</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-            @foreach(var pelaaja in pelaajat.Where(o => o.Pelaamassa == false))
-            {
-                        if(pelaaja.YhteysID == yhteysID)
-                        {
-                                                    <td><b>@pelaaja.Nimi (Sinä)</b></td>
-                            <td></td>
-                        }
-                        else
-                        {
-                                                    <td><b>@pelaaja.Nimi</b></td>
-                <td><button class="btn btn-dark">Haasta</button></td>
-                        }
+    @if(haastaja != null)
+    {
+      <div class="vuoro">
+      <h1>Haaste käyttäjältä @haastaja.Nimi</h1>
+      <button @onclick="() => AloitaPeli(haastaja)" class="btn btn-success">Hyväksy</button>
+      <button @onclick="() => { haastaja = null; }" class="btn btn-danger">Hylkää</button>
+      </div>
+    }
+    else
+    {
+        @if (peli != null)
+        {
+            <div class="vuoro">
+                <h2>Pelaaja: @pelaaja.Nimi</h2>
+                <h2>Vuoro: @peli.Vuoro.Nimi</h2>
+                @if(peli.Voittaja != null || peli.Ruudut.Where(o => o.Pelaaja != null).Count() == 9)
+                {
+                    if(peli.Voittaja != null)
+                    {
+                        <h2>@peli.Voittaja.Nimi on voittanut pelin!</h2>
+                    }
+                    else
+                    {
+                        <h2>Tasapeli!</h2>
+                    }
+                }
+            </div>
+            <div id="peli">
+                @foreach (var ruutu in peli.Ruudut)
+                {
+                    <div @onclick="() => ValitseRuutu(ruutu.Id)" class="ruudukko" @key="ruutu.Id">
+                        @{
+                            if (ruutu.Pelaaja != null)
+                            {
+                                if (ruutu.Pelaaja == pelaaja.Nimi)
+                                {
+                                    <text>X</text>
+                                }
+                                else
+                                {
+                                    <text>0</text>
+                                }
+                            }
+                            else
+                            {
 
-            }
-                </tr>
-            </tbody>
-            </table>
-        </div>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="vuoro" style="max-width:600px; margin: 0 auto;">
+                <table class="table table-striped">
+                    <thead class="table-dark text-white">
+                        <tr>
+                            <th>Pelaaja</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var peluri in pelaajat.Where(o => o.Pelaamassa == false))
+                        {
+                            <tr @key=peluri.YhteysID>
+                                <td>@peluri.Nimi</td>
+                                @{
+                                    if (peluri.YhteysID != pelaaja.YhteysID)
+                                    {
+                                        <td><button @onclick="() => Haasta(peluri)" class="btn btn-dark">Haasta</button></td>
+                                    }
+                                    else
+                                    {
+                                        <td></td>
+                                    }
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+    }
+
 }
 
 
@@ -65,38 +111,72 @@ else
     private List<Pelaaja> pelaajat;
     private List<Ruutu>? ruudut;
     private Pelaaja? pelaaja;
-    private Pelaaja? voittaja;
-    private HubConnection? hubConnection;
+    public Peli? peli { get; set; }
+    private Pelaaja? haastaja;
+    public HubConnection? hubConnection;
     private string? nickname;
-    private string? yhteysID;
     public bool rekisteroity = false;
 
     protected override async void OnInitialized()
     {
-        hubConnection = new HubConnectionBuilder().WithUrl(NavigationManager.ToAbsoluteUri("/gamehub")).Build();
-
-        hubConnection.On<string>("rekisteroity", (conID) =>
+        try
         {
-            yhteysID = conID;
-            rekisteroity = true;
-        });
+            hubConnection = new HubConnectionBuilder().WithUrl(NavigationManager.ToAbsoluteUri("/gamehub")).Build();
 
-        hubConnection.On<List<Pelaaja>>("pelaajaPaivitys", (pelaajatServer) =>
+            hubConnection.On<Pelaaja>("rekisteroity", (pelaajaser) =>
+            {
+                pelaaja = pelaajaser;
+                rekisteroity = true;
+            });
+
+            hubConnection.On<Peli>("refresh", (paivitettypeli) =>
+            {
+                peli = paivitettypeli;
+                StateHasChanged();
+            });
+
+            hubConnection.On<List<Pelaaja>>("pelaajaPaivitys", (pelaajatServer) =>
+            {
+                pelaajat = pelaajatServer;
+                StateHasChanged();
+            });
+
+            hubConnection.On<Pelaaja>("Haaste", (haastajaFromServer) =>
+            {
+                haastaja = haastajaFromServer;
+                StateHasChanged();
+            });
+
+            hubConnection.On<Peli>("Peliin", (Id) =>
+            {
+                peli = Id;
+                haastaja = null;
+                StateHasChanged();
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch
         {
-            pelaajat = pelaajatServer;
-            StateHasChanged();
-        });
 
-        await hubConnection.StartAsync();
+        }
+
     }
 
-    public void AloitaPeli()
+    public async Task AloitaPeli(Pelaaja haastajac)
     {
-        //ruudut = new List<Ruutu>();
-        //for(int i = 0; i < 9; i++)
-        //{
-        //    ruudut.Add(new Ruutu { Id = i, Pelaaja = null });
-        //}
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("Pelaa", haastajac);
+        }
+    }
+
+    public async Task ValitseRuutu(int id)
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("Aseta", peli.Id, id);
+        }
     }
 
     public async Task AsetaNimimerkki()
@@ -107,53 +187,13 @@ else
         }
     }
 
-    public void ValitseRuutu(Ruutu valittu)
+    public async Task Haasta(Pelaaja haastettava)
     {
-        //if(valittu.Pelaaja == null && voittaja == null)
-        //{
-        //    valittu.Pelaaja = pelaaja;
-        //    Voittiko();
-        //    if(pelaaja == "X")
-        //    {
-        //        pelaaja = "0";
-        //    }
-        //    else
-        //    {
-        //        pelaaja = "X";
-        //    }
-        //}
-
+        if (hubConnection is not null)
+        {
+            await hubConnection.SendAsync("Haasta", haastettava);
+        }
     }
-
-
-    //public bool Voittiko()
-    //{
-    //    if (ruudut != null && ruudut.Where(o => o.Pelaaja != null).Count() > 3)
-    //    {
-    //        var ruudutArray = ruudut.ToArray();
-    //        int[,] voittolinjat = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } };
-    //        for(int i = 0; i < 8; i++)
-    //        {
-    //            var a = ruudutArray[voittolinjat[i,0]].Pelaaja ?? "A";
-    //            var b = ruudutArray[voittolinjat[i,1]].Pelaaja ?? "B";
-    //            var c = ruudutArray[voittolinjat[i,2]].Pelaaja ?? "C";
-    //            if(a == b && c == a)
-    //            {
-    //                voittaja = pelaaja;
-    //                return true;
-    //            }
-    //        }
-    //        if(ruudut.Where(o => o.Pelaaja != null).Count() == 9 && voittaja == null)
-    //        {
-    //            voittaja = null;
-    //        }
-    //        return false;
-    //    }
-    //    else
-    //    {
-    //        return false;
-    //    }
-    //}
 
     public bool IsConnected =>
         hubConnection?.State == HubConnectionState.Connected;
