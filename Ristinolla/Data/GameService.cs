@@ -188,7 +188,6 @@ namespace Ristinolla.Data
                     pelaajaList.Remove(pelaaja);
                 }
                 await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
-                await Poistu();
             }
         }
 
