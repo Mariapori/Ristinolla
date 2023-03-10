@@ -59,10 +59,43 @@ namespace Ristinolla.Data
 
         }
 
+        public async Task<int> GetGameCount()
+        {
+            int count = 0;
+            lock (_lock)
+            {
+                count = peliList.Count;
+            }
+            return count;
+        }
+
+        public async Task Poistu()
+        {
+
+                var pelit = peliList.Where(o => o.Haastettu.YhteysID == Context.ConnectionId || o.Aloittaja.YhteysID == Context.ConnectionId);
+                if (pelit.Any())
+                {
+                    foreach (var peli in pelit)
+                    {
+                        if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() != 9)
+                        {
+                            peli.Voittaja = peli.Aloittaja.YhteysID != Context.ConnectionId ? peli.Aloittaja : peli.Haastettu;
+                            peli.Aloittaja.Pelaamassa = false;
+                            peli.Haastettu.Pelaamassa = false;
+                        }
+                        await Clients.Group(peli.Id).SendAsync("refresh", peli);
+                        peliList.Remove(peli);
+                    }
+                }
+            
+            await Clients.All.SendAsync("gamecount", peliList.Count);
+            await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
+        }
+
         public async void Pelaa(Pelaaja haast)
         {
             var peli = new Peli();
-            peli.Aloittaja = haast;
+            peli.Aloittaja = pelaajaList.FirstOrDefault(o => o.YhteysID == haast.YhteysID);
             peli.Haastettu = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
             lock (_lock)
             {
@@ -85,9 +118,9 @@ namespace Ristinolla.Data
             }
             await Groups.AddToGroupAsync(peli.Aloittaja.YhteysID, peli.Id);
             await Groups.AddToGroupAsync(peli.Haastettu.YhteysID, peli.Id);
-
+            await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
             await Clients.Group(peli.Id).SendAsync("Peliin", peli);
-
+            await Clients.All.SendAsync("gamecount", peliList.Count);
         }
 
         public async Task Aseta(string peliID, int ruutuID)
@@ -114,11 +147,16 @@ namespace Ristinolla.Data
                     if (Voittiko(peli, pelaaja))
                     {
                         gameover = true;
+                        peli.Aloittaja.Pelaamassa = false;
+                        peli.Haastettu.Pelaamassa = false;
+                        peliList.Remove(peli);
                     }
                 }
 
             }
             await Clients.Group(peliID).SendAsync("refresh", peli);
+            await Clients.All.SendAsync("gamecount", peliList.Count);
+            await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
         }
 
         public async void Haasta(Pelaaja haastettava)
@@ -140,7 +178,7 @@ namespace Ristinolla.Data
         }
 
 
-        public override Task OnDisconnectedAsync(Exception? exception)
+        public override async Task OnDisconnectedAsync(Exception? exception)
         {
             if(pelaajaList != null)
             {
@@ -149,9 +187,9 @@ namespace Ristinolla.Data
                     var pelaaja = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
                     pelaajaList.Remove(pelaaja);
                 }
-                Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
+                await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
+                await Poistu();
             }
-            return Task.CompletedTask;
         }
 
         public bool Voittiko(Peli peli, Pelaaja vuorossa)

@@ -16,7 +16,7 @@
 }
 else
 {
-    @if(haastaja != null)
+    @if(haastaja != null && peli == null)
     {
       <div class="vuoro">
       <h1>Haaste käyttäjältä @haastaja.Nimi</h1>
@@ -41,6 +41,7 @@ else
                     {
                         <h2>Tasapeli!</h2>
                     }
+                    <button @onclick="() => Haasta(pelaaja.Nimi != peli.Aloittaja.Nimi ? peli.Aloittaja : peli.Haastettu)" class="btn btn-dark">Haasta</button>
                 }
             </div>
             <div id="peli">
@@ -67,10 +68,22 @@ else
                     </div>
                 }
             </div>
+            @if (haastaja != null)
+            {   
+                <div class="vuoro">
+                <h1>Haaste käyttäjältä @haastaja.Nimi</h1>
+                <button @onclick="() => AloitaPeli(haastaja)" class="btn btn-success">Hyväksy</button>
+                <button @onclick="() => { haastaja = null; }" class="btn btn-danger">Hylkää</button>
+                </div>
+            }
+            <div class="vuoro">
+            <button @onclick="() => Poistu()" class="btn btn-danger">Poistu</button>
+            </div>
         }
         else
         {
             <div class="vuoro" style="max-width:600px; margin: 0 auto;">
+                <h2>Pelejä käynnissä: @pelejaKaynnissa</h2>
                 <table class="table table-striped">
                     <thead class="table-dark text-white">
                         <tr>
@@ -108,6 +121,7 @@ else
 
 @code
 {
+    private int pelejaKaynnissa = 0;
     private List<Pelaaja> pelaajat;
     private List<Ruutu>? ruudut;
     private Pelaaja? pelaaja;
@@ -141,6 +155,12 @@ else
                 StateHasChanged();
             });
 
+            hubConnection.On<int>("gamecount", (gameco) =>
+            {       
+                pelejaKaynnissa = gameco;
+                StateHasChanged();
+            });
+
             hubConnection.On<Pelaaja>("Haaste", (haastajaFromServer) =>
             {
                 haastaja = haastajaFromServer;
@@ -154,7 +174,10 @@ else
                 StateHasChanged();
             });
 
+
             await hubConnection.StartAsync();
+
+            pelejaKaynnissa = await hubConnection.InvokeAsync<int>("GetGameCount");
         }
         catch
         {
@@ -168,6 +191,15 @@ else
         if (hubConnection is not null)
         {
             await hubConnection.SendAsync("Pelaa", haastajac);
+        }
+    }
+
+    public async Task Poistu()
+    {
+        if(hubConnection is not null)
+        {
+            peli = null;
+            await hubConnection.SendAsync("Poistu");
         }
     }
 
