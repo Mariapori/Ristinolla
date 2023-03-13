@@ -6,4 +6,4 @@ https://ristinolla.mariapori.fi
 
 Tic-Tac-Toe multiplayer
 
-My first SignalR game, very simple idea for testing SignalR.
+My first websocket game, very simple idea for testing SignalR.
