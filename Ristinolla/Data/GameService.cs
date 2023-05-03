@@ -186,8 +186,17 @@ namespace Ristinolla.Data
                 {
                     var pelaaja = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
                     pelaajaList.Remove(pelaaja);
+                    foreach(var peli in peliList.Where(o => o.Aloittaja.Nimi == pelaaja.Nimi || o.Haastettu.Nimi == pelaaja.Nimi))
+                    {
+                        if(peli.Voittaja == null)
+                        {
+                            peli.Voittaja = peli.Aloittaja.Nimi != pelaaja.Nimi ? peli.Aloittaja : peli.Haastettu;
+                            peliList.Remove(peli);
+                        }    
+                    }
                 }
                 await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
+                await Clients.All.SendAsync("gamecount", peliList.Count);
             }
         }
 
