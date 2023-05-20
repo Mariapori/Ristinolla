@@ -36,8 +36,7 @@ a, .btn-link {
 
 #peli {
     display: grid;
-    grid-template-columns: repeat(3, auto);
-    width: 306px;
+    width: fit-content;
     margin: 10px auto;
     background-color: lightblue;
     color: #000;

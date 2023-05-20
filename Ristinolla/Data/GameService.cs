@@ -21,15 +21,29 @@ namespace Ristinolla.Data
         public Pelaaja Vuoro { get; set; }
         public List<Ruutu> Ruudut { get; set; }
         public Pelaaja? Voittaja { get; set; } 
+        public int ruutuKoko { get; set; }
 
+        public Peli(int ruutuKoko)
+        {
+            Id = Guid.NewGuid().ToString();
+            Ruudut = new List<Ruutu>();
+            this.ruutuKoko = ruutuKoko;
+            for (int i = 0; i < this.ruutuKoko*this.ruutuKoko; i++)
+            {
+                Ruudut.Add(new Ruutu { Id = i, Pelaaja = null });
+            }
+
+        }
         public Peli()
         {
             Id = Guid.NewGuid().ToString();
             Ruudut = new List<Ruutu>();
-            for (int i = 0; i < 9; i++)
+            this.ruutuKoko = 3;
+            for (int i = 0; i < this.ruutuKoko * this.ruutuKoko; i++)
             {
                 Ruudut.Add(new Ruutu { Id = i, Pelaaja = null });
             }
+
         }
     }
     public class GameService : Hub
@@ -77,7 +91,7 @@ namespace Ristinolla.Data
                 {
                     foreach (var peli in pelit)
                     {
-                        if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() != 9)
+                        if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() != peli.ruutuKoko*peli.ruutuKoko)
                         {
                             peli.Voittaja = peli.Aloittaja.YhteysID != Context.ConnectionId ? peli.Aloittaja : peli.Haastettu;
                             peli.Aloittaja.Pelaamassa = false;
@@ -202,7 +216,7 @@ namespace Ristinolla.Data
 
         public bool Voittiko(Peli peli, Pelaaja vuorossa)
         {
-            if (peli.Ruudut != null && peli.Ruudut.Where(o => o.Pelaaja != null).Count() > 3)
+            if (peli.Ruudut != null && peli.Ruudut.Where(o => o.Pelaaja != null).Count() > (peli.ruutuKoko*peli.ruutuKoko) / 2)
             {
                 var ruudutArray = peli.Ruudut.ToArray();
                 int[,] voittolinjat = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } };

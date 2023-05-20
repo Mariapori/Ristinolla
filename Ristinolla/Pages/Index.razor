@@ -31,7 +31,7 @@ else
             <div class="vuoro">
                 <h2>Pelaaja: @pelaaja.Nimi</h2>
                 <h2>Vuoro: @peli.Vuoro.Nimi</h2>
-                @if(peli.Voittaja != null || peli.Ruudut.Where(o => o.Pelaaja != null).Count() == 9)
+                @if(peli.Voittaja != null || peli.Ruudut.Where(o => o.Pelaaja != null).Count() == (peli.ruutuKoko*peli.ruutuKoko)/2)
                 {
                     if(peli.Voittaja != null)
                     {
@@ -44,7 +44,7 @@ else
                     <button @onclick="() => Haasta(pelaaja.Nimi != peli.Aloittaja.Nimi ? peli.Aloittaja : peli.Haastettu)" class="btn btn-dark">Haasta</button>
                 }
             </div>
-            <div id="peli">
+            <div id="peli" style="grid-template-columns: repeat(@peli.ruutuKoko, auto);">
                 @foreach (var ruutu in peli.Ruudut)
                 {
                     <div @onclick="() => ValitseRuutu(ruutu.Id)" class="ruudukko" @key="ruutu.Id">
