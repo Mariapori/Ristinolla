@@ -106,9 +106,18 @@ namespace Ristinolla.Data
             await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
         }
 
-        public async void Pelaa(Pelaaja haast)
+        public async void Pelaa(Pelaaja haast, int? pelinkoko)
         {
-            var peli = new Peli();
+            Peli peli;
+            if (pelinkoko.HasValue)
+            {
+                peli = new Peli(pelinkoko.Value);
+            }
+            else
+            {
+                peli = new Peli();
+            }
+
             peli.Aloittaja = pelaajaList.FirstOrDefault(o => o.YhteysID == haast.YhteysID);
             peli.Haastettu = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
             lock (_lock)
@@ -145,12 +154,12 @@ namespace Ristinolla.Data
             {
                 var pelaaja = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
                 peli = peliList.FirstOrDefault(o => o.Id == peliID);
-                var ruutu = peli.Ruudut.FirstOrDefault(o => o.Id == ruutuID);
+                var ruutu = peli?.Ruudut.FirstOrDefault(o => o.Id == ruutuID);
 
-                if (peli.Vuoro.Nimi == pelaaja.Nimi && ruutu.Pelaaja == null && peli.Voittaja == null)
+                if (peli?.Vuoro.Nimi == pelaaja?.Nimi && ruutu?.Pelaaja == null && peli?.Voittaja == null)
                 {
-                    ruutu.Pelaaja = pelaaja.Nimi;
-                    if (pelaaja.Nimi == peli.Aloittaja.Nimi)
+                    ruutu.Pelaaja = pelaaja?.Nimi;
+                    if (pelaaja?.Nimi == peli?.Aloittaja.Nimi)
                     {
                         peli.Vuoro = peli.Haastettu;
                     }
@@ -173,12 +182,12 @@ namespace Ristinolla.Data
             await Clients.All.SendAsync("pelaajaPaivitys", pelaajaList);
         }
 
-        public async void Haasta(Pelaaja haastettava)
+        public async void Haasta(Pelaaja haastettava, int pelinKoko)
         {
             if(haastettava.Vastustaja == null)
             {
                 var pelaaja = pelaajaList.FirstOrDefault(o => o.YhteysID == Context.ConnectionId);
-                await Clients.Client(haastettava.YhteysID).SendAsync("Haaste", pelaaja);
+                await Clients.Client(haastettava.YhteysID).SendAsync("Haaste", pelaaja, pelinKoko);
             }
         }
 
@@ -216,26 +225,42 @@ namespace Ristinolla.Data
 
         public bool Voittiko(Peli peli, Pelaaja vuorossa)
         {
-            if (peli.Ruudut != null && peli.Ruudut.Where(o => o.Pelaaja != null).Count() > (peli.ruutuKoko*peli.ruutuKoko) / 2)
+            int ruutuKoko = peli.ruutuKoko;
+            int[,] voittolinjat = GenerateVoittolinjat(ruutuKoko);
+
+            if (peli.Ruudut != null && peli.Ruudut.Where(o => o.Pelaaja != null).Count() >= ruutuKoko)
             {
                 var ruudutArray = peli.Ruudut.ToArray();
-                int[,] voittolinjat = { { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, { 0, 4, 8 }, { 2, 4, 6 } };
-                for (int i = 0; i < 8; i++)
+
+                for (int i = 0; i < voittolinjat.GetLength(0); i++)
                 {
-                    var a = ruudutArray[voittolinjat[i, 0]].Pelaaja ?? "A";
-                    var b = ruudutArray[voittolinjat[i, 1]].Pelaaja ?? "B";
-                    var c = ruudutArray[voittolinjat[i, 2]].Pelaaja ?? "C";
-                    if (a == b && c == a)
+                    var a = ruudutArray[voittolinjat[i, 0]].Pelaaja;
+                    bool lineFilledBySamePlayer = true;
+
+                    for (int j = 1; j < ruutuKoko; j++)
+                    {
+                        var b = ruudutArray[voittolinjat[i, j]].Pelaaja;
+
+                        if (b != a || string.IsNullOrEmpty(a))
+                        {
+                            lineFilledBySamePlayer = false;
+                            break;
+                        }
+                    }
+
+                    if (lineFilledBySamePlayer)
                     {
                         peli.Voittaja = vuorossa;
                         return true;
                     }
                 }
-                if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() == 9)
+
+                if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() == peli.Ruudut.Count)
                 {
                     peli.Voittaja = null;
                     return true;
                 }
+
                 return false;
             }
             else
@@ -243,5 +268,39 @@ namespace Ristinolla.Data
                 return false;
             }
         }
+
+        private int[,] GenerateVoittolinjat(int ruutuKoko)
+        {
+            int[,] voittolinjat = new int[2 * ruutuKoko + 2, ruutuKoko];
+
+            // Vaakarivit
+            for (int i = 0; i < ruutuKoko; i++)
+            {
+                for (int j = 0; j < ruutuKoko; j++)
+                {
+                    voittolinjat[i, j] = i * ruutuKoko + j;
+                }
+            }
+
+            // Pystyrivit
+            for (int i = 0; i < ruutuKoko; i++)
+            {
+                for (int j = 0; j < ruutuKoko; j++)
+                {
+                    voittolinjat[ruutuKoko + i, j] = j * ruutuKoko + i;
+                }
+            }
+
+            // Vinorivit
+            for (int j = 0; j < ruutuKoko; j++)
+            {
+                voittolinjat[2 * ruutuKoko, j] = j * (ruutuKoko + 1);
+                voittolinjat[2 * ruutuKoko + 1, j] = (j + 1) * (ruutuKoko - 1);
+            }
+
+            return voittolinjat;
+        }
+
+
     }
 }

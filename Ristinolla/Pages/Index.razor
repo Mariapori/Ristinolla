@@ -19,9 +19,9 @@ else
     @if(haastaja != null && peli == null)
     {
       <div class="vuoro">
-      <h1>Haaste käyttäjältä @haastaja.Nimi</h1>
-      <button @onclick="() => AloitaPeli(haastaja)" class="btn btn-success">Hyväksy</button>
-      <button @onclick="() => { haastaja = null; }" class="btn btn-danger">Hylkää</button>
+      <h1>Haaste käyttäjältä @haastaja.Nimi  (Koko: @tarjottukoko.ToString() x @tarjottukoko.ToString())</h1>
+      <button @onclick="() => AloitaPeli(haastaja, tarjottukoko.Value)" class="btn btn-success">Hyväksy</button>
+      <button @onclick="() => { haastaja = null; tarjottukoko = null; }" class="btn btn-danger">Hylkää</button>
       </div>
     }
     else
@@ -31,7 +31,7 @@ else
             <div class="vuoro">
                 <h2>Pelaaja: @pelaaja.Nimi</h2>
                 <h2>Vuoro: @peli.Vuoro.Nimi</h2>
-                @if(peli.Voittaja != null || peli.Ruudut.Where(o => o.Pelaaja != null).Count() == (peli.ruutuKoko*peli.ruutuKoko)/2)
+                @if(peli.Voittaja != null || peli.Ruudut.Where(o => o.Pelaaja != null).Count() == peli.Ruudut.Count)
                 {
                     if(peli.Voittaja != null)
                     {
@@ -41,7 +41,7 @@ else
                     {
                         <h2>Tasapeli!</h2>
                     }
-                    <button @onclick="() => Haasta(pelaaja.Nimi != peli.Aloittaja.Nimi ? peli.Aloittaja : peli.Haastettu)" class="btn btn-dark">Haasta</button>
+                    <button @onclick="() => Haasta(pelaaja.Nimi != peli.Aloittaja.Nimi ? peli.Aloittaja : peli.Haastettu, peli.ruutuKoko)" class="btn btn-dark">Haasta</button>
                 }
             </div>
             <div id="peli" style="grid-template-columns: repeat(@peli.ruutuKoko, auto);">
@@ -71,9 +71,9 @@ else
             @if (haastaja != null)
             {   
                 <div class="vuoro">
-                <h1>Haaste käyttäjältä @haastaja.Nimi</h1>
-                <button @onclick="() => AloitaPeli(haastaja)" class="btn btn-success">Hyväksy</button>
-                <button @onclick="() => { haastaja = null; }" class="btn btn-danger">Hylkää</button>
+                <h1>Haaste käyttäjältä @haastaja.Nimi  (Koko: @tarjottukoko.ToString() x @tarjottukoko.ToString())</h1>
+                <button @onclick="() => AloitaPeli(haastaja, tarjottukoko.Value)" class="btn btn-success">Hyväksy</button>
+                <button @onclick="() => { haastaja = null; tarjottukoko = null; }" class="btn btn-danger">Hylkää</button>
                 </div>
             }
             <div class="vuoro">
@@ -84,6 +84,8 @@ else
         {
             <div class="vuoro" style="max-width:600px; margin: 0 auto;">
                 <h2>Pelejä käynnissä: @pelejaKaynnissa</h2>
+                <label>Pelin koko:</label><input type="number" @bind-value=pelinKoko>
+                <i>Esimerkki: 3 = 3x3</i>
                 <table class="table table-striped">
                     <thead class="table-dark text-white">
                         <tr>
@@ -99,7 +101,7 @@ else
                                 @{
                                     if (peluri.YhteysID != pelaaja.YhteysID)
                                     {
-                                        <td><button @onclick="() => Haasta(peluri)" class="btn btn-dark">Haasta</button></td>
+                                        <td><button @onclick="() => Haasta(peluri, pelinKoko)" class="btn btn-dark">Haasta</button></td>
                                     }
                                     else
                                     {
@@ -130,6 +132,8 @@ else
     public HubConnection? hubConnection;
     private string? nickname;
     public bool rekisteroity = false;
+    public int pelinKoko = 3;
+    public int? tarjottukoko; 
 
     protected override async void OnInitialized()
     {
@@ -161,9 +165,10 @@ else
                 StateHasChanged();
             });
 
-            hubConnection.On<Pelaaja>("Haaste", (haastajaFromServer) =>
+            hubConnection.On<Pelaaja, int>("Haaste", (haastajaFromServer, koko) =>
             {
                 haastaja = haastajaFromServer;
+                tarjottukoko = koko;
                 StateHasChanged();
             });
 
@@ -186,11 +191,11 @@ else
 
     }
 
-    public async Task AloitaPeli(Pelaaja haastajac)
+    public async Task AloitaPeli(Pelaaja haastajac, int pelinkoko)
     {
         if (hubConnection is not null)
         {
-            await hubConnection.SendAsync("Pelaa", haastajac);
+            await hubConnection.SendAsync("Pelaa", haastajac, pelinkoko);
         }
     }
 
@@ -219,11 +224,11 @@ else
         }
     }
 
-    public async Task Haasta(Pelaaja haastettava)
+    public async Task Haasta(Pelaaja haastettava, int pelKoko)
     {
         if (hubConnection is not null)
         {
-            await hubConnection.SendAsync("Haasta", haastettava);
+            await hubConnection.SendAsync("Haasta", haastettava, pelKoko);
         }
     }
 
