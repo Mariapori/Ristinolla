@@ -1,5 +1,5 @@
 # Ristinolla
-Ristinolla .NET 6 Blazor Server and SignalR
+Ristinolla .NET 8 Blazor Server and SignalR
 
 LIVE DEMO
 https://ristinolla.mariapori.fi
