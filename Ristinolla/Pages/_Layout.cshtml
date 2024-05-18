@@ -12,6 +12,14 @@
     <link href="css/site.css" rel="stylesheet" />
     <link href="Ristinolla.styles.css" rel="stylesheet" />
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+    <meta http-equiv="Content-Security-Policy" 
+      content="base-uri 'self';
+               default-src 'self';
+               img-src data: https:;
+               object-src 'none';
+               script-src 'self';
+               style-src 'self';
+               upgrade-insecure-requests;">
 </head>
 <body>
     @RenderBody()
