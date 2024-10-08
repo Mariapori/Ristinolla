@@ -40,6 +40,7 @@ a, .btn-link {
     margin: 10px auto;
     background-color: lightblue;
     color: #000;
+    grid-template-columns: repeat(3, auto);
 }
 .voittaja{
     text-align:center;
