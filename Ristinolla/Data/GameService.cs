@@ -226,81 +226,63 @@ namespace Ristinolla.Data
         public bool Voittiko(Peli peli, Pelaaja vuorossa)
         {
             int ruutuKoko = peli.ruutuKoko;
-            int[,] voittolinjat = GenerateVoittolinjat(ruutuKoko);
+            var grid = peli.Ruudut.Select(r => r.Pelaaja).ToArray();
 
-            if (peli.Ruudut != null && peli.Ruudut.Where(o => o.Pelaaja != null).Count() >= ruutuKoko)
+            // Loop through all cells
+            for (int row = 0; row < ruutuKoko; row++)
             {
-                var ruudutArray = peli.Ruudut.ToArray();
-
-                for (int i = 0; i < voittolinjat.GetLength(0); i++)
+                for (int col = 0; col < ruutuKoko; col++)
                 {
-                    var a = ruudutArray[voittolinjat[i, 0]].Pelaaja;
-                    bool lineFilledBySamePlayer = true;
-
-                    for (int j = 1; j < ruutuKoko; j++)
+                    if (!string.IsNullOrEmpty(grid[row * ruutuKoko + col]))
                     {
-                        var b = ruudutArray[voittolinjat[i, j]].Pelaaja;
-
-                        if (b != a || string.IsNullOrEmpty(a))
+                        // Check in all directions (horizontal, vertical, and diagonals)
+                        if (CheckDirection(grid, ruutuKoko, row, col, 0, 1, vuorossa.Nimi) ||  // Horizontal
+                            CheckDirection(grid, ruutuKoko, row, col, 1, 0, vuorossa.Nimi) ||  // Vertical
+                            CheckDirection(grid, ruutuKoko, row, col, 1, 1, vuorossa.Nimi) ||  // Diagonal \
+                            CheckDirection(grid, ruutuKoko, row, col, 1, -1, vuorossa.Nimi))   // Diagonal /
                         {
-                            lineFilledBySamePlayer = false;
-                            break;
+                            peli.Voittaja = vuorossa;
+                            return true;
                         }
                     }
-
-                    if (lineFilledBySamePlayer)
-                    {
-                        peli.Voittaja = vuorossa;
-                        return true;
-                    }
                 }
-
-                if (peli.Ruudut.Where(o => o.Pelaaja != null).Count() == peli.Ruudut.Count)
-                {
-                    peli.Voittaja = null;
-                    return true;
-                }
-
-                return false;
             }
-            else
+
+            // Check for a draw
+            if (peli.Ruudut.All(r => r.Pelaaja != null))
             {
-                return false;
+                peli.Voittaja = null; // Draw
+                return true;
             }
+
+            return false;
         }
 
-        private int[,] GenerateVoittolinjat(int ruutuKoko)
+// Helper to check a direction
+        private bool CheckDirection(string[] grid, int size, int startRow, int startCol, int deltaRow, int deltaCol, string player)
         {
-            int[,] voittolinjat = new int[2 * ruutuKoko + 2, ruutuKoko];
+            int count = 0;
+            int maxCells = Math.Min(5, size); // Limit to 5 cells or grid size, whichever is smaller
 
-            // Vaakarivit
-            for (int i = 0; i < ruutuKoko; i++)
+            for (int i = 0; i < maxCells; i++)
             {
-                for (int j = 0; j < ruutuKoko; j++)
+                int row = startRow + i * deltaRow;
+                int col = startCol + i * deltaCol;
+
+                // Check boundaries and match
+                if (row >= 0 && row < size && col >= 0 && col < size && grid[row * size + col] == player)
                 {
-                    voittolinjat[i, j] = i * ruutuKoko + j;
+                    count++;
+                    if (count == maxCells) return true; // Victory line found
+                }
+                else
+                {
+                    break; // Stop if mismatch or out of bounds
                 }
             }
-
-            // Pystyrivit
-            for (int i = 0; i < ruutuKoko; i++)
-            {
-                for (int j = 0; j < ruutuKoko; j++)
-                {
-                    voittolinjat[ruutuKoko + i, j] = j * ruutuKoko + i;
-                }
-            }
-
-            // Vinorivit
-            for (int j = 0; j < ruutuKoko; j++)
-            {
-                voittolinjat[2 * ruutuKoko, j] = j * (ruutuKoko + 1);
-                voittolinjat[2 * ruutuKoko + 1, j] = (j + 1) * (ruutuKoko - 1);
-            }
-
-            return voittolinjat;
+            return false;
         }
 
-
+        
     }
 }

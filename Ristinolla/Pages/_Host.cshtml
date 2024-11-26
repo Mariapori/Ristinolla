@@ -6,3 +6,12 @@
 }
 
 <component type="typeof(App)" render-mode="ServerPrerendered" />
+
+<script>
+    function addStylesToDiv(divId, styles) {
+        const div = document.getElementById(divId);
+        if (div) {
+            div.style.cssText += styles;
+        }
+    }
+</script>

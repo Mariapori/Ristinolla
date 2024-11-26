@@ -9,16 +9,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="~/" />
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
-    <link href="css/site.css" rel="stylesheet" />
-    <link href="Ristinolla.styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css" />
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
-    <meta http-equiv="Content-Security-Policy" 
-      content="base-uri 'self';
+    <meta http-equiv="Content-Security-Policy"
+          content="base-uri 'self';
                default-src 'self';
                img-src data: https:;
                object-src 'none';
                script-src 'self';
-               style-src 'self';
+               style-src 'self' 'unsafe-inline';
                upgrade-insecure-requests;">
 </head>
 <body>

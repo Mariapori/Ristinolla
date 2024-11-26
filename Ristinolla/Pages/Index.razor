@@ -44,7 +44,7 @@ else
                     <button @onclick="() => Haasta(pelaaja.Nimi != peli.Aloittaja.Nimi ? peli.Aloittaja : peli.Haastettu, peli.ruutuKoko)" class="btn btn-dark">Haasta</button>
                 }
             </div>
-            <div id="peli" style="grid-template-columns: repeat(@peli.ruutuKoko, auto);">
+            <div id="peli" style="@styleforpeli">
                 @foreach (var ruutu in peli.Ruudut)
                 {
                     <div @onclick="() => ValitseRuutu(ruutu.Id)" class="ruudukko" @key="ruutu.Id">
@@ -84,7 +84,7 @@ else
         {
             <div class="vuoro" style="max-width:600px; margin: 0 auto;">
                 <h2>Pelejä käynnissä: @pelejaKaynnissa</h2>
-                <label>Pelin koko:</label><input type="number" @bind-value=pelinKoko readonly>
+                <label>Pelin koko:</label><input type="number" @bind-value=pelinKoko >
                 <i>Esimerkki: 3 = 3x3</i>
                 <table class="table table-striped">
                     <thead class="table-dark text-white">
@@ -133,7 +133,8 @@ else
     private string? nickname;
     public bool rekisteroity = false;
     public int pelinKoko = 3;
-    public int? tarjottukoko; 
+    public int? tarjottukoko;
+    private string styleforpeli;
 
     protected override async void OnInitialized()
     {
@@ -176,6 +177,7 @@ else
             {
                 peli = Id;
                 haastaja = null;
+                styleforpeli = $"grid-template-columns: repeat({peli.ruutuKoko}, auto);";
                 StateHasChanged();
             });
 
