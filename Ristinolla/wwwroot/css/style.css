@@ -17,7 +17,6 @@
     text-overflow: ellipsis;
 }
 
-}
 
 .pelialue {
     margin: 0 auto;
@@ -61,9 +60,9 @@ a, .btn-link {
 
 #peli {
     display: grid;
-    width: fit-content;
+    gap: 0px; /* Gap between cells */
+    max-width: 500px; /* Limit overall grid width */
     margin: 10px auto;
-    background-color: lightblue;
     color: #000;
 }
 .voittaja{
@@ -81,14 +80,18 @@ a, .btn-link {
 }
 .ruudukko {
     font-family: "Permanent Marker", cursive;
-    width: 100px;
-    height: 100px;
+    aspect-ratio: 1 / 1; /* Ensure square cells */
     box-shadow: 2px 2px 2px 2px #ecd7ba;
     border: 2px solid #000;
     cursor: pointer;
-    line-height: 100px;
-    font-size: 60px;
+    min-width: 30px;
     text-align: center;
+    background-color: lightblue;
+    line-height: 0; /* Reset line height */
+    font-size: clamp(1rem, 5vw, 2rem); /* Responsive font size */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #blazor-error-ui {
